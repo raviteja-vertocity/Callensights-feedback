@@ -35,14 +35,12 @@ The Senior Sales Analyst will be responsible for analyzing sales calls, providin
 
 Key Responsibilities:
 Analyze Sales Calls: Systematically review and analyze recorded sales calls to identify key trends, strengths, weaknesses, opportunities, and threats.
-
 Provide Feedback: Offer detailed, actionable feedback to sales representatives, outlining the pros and cons of their approach and suggesting improvements.
-
 Rate Sales Efforts: Implement a 10-point rating system to evaluate sales efforts based on predefined criteria, including communication skills, product knowledge, negotiation techniques, etc.
-
 Develop Improvement Strategies: Collaborate with the sales team to create and implement strategies that drive continuous improvement in sales performance.
-
 Create Reports: Prepare and present analytical reports to the management, showcasing the trends, successes, and areas for enhancement in the sales process.
+
+this is a Conversation between Sales Representative and Potential Customer for Vertocity, Give me pros and cons of the pitch and a detailed feedback on what are the areas of improvement., Give me 10 key metrics and their ratings and overall rating.
 """
 
 
