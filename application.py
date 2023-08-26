@@ -119,7 +119,7 @@ def process_event(event_data):
         with open(local_transcript_file, 'r') as trans_file:
             transcription = load(trans_file)
 
-        openai.api_key = os.environ.get('OPENAI_API_KEY','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')
+        openai.api_key = os.environ.get('OPENAI_API_KEY')
         feedback = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
