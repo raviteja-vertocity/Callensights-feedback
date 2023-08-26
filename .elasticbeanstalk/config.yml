@@ -1,6 +1,8 @@
 branch-defaults:
   default:
     environment: Cns-dev-feedbk-wkr-app-env
+  main:
+    environment: Cns-dev-feedbk-wkr-app-env
 environment-defaults:
   Cns-dev-feedbk-wkr-app-env:
     branch: null
@@ -15,5 +17,5 @@ global:
   platform_name: null
   platform_version: null
   profile: null
-  sc: null
+  sc: git
   workspace_type: Application
