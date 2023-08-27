@@ -32,10 +32,14 @@ class MysqlDB:
             raise Exception("Invalid stage; stage must be 'transcript' or 'analysis' ")
         
         query_update = f"""
-                        UPDATE audio_process_status
+                        UPDATE audio_process_status aps
                         SET {stage} = '{status}',
                             coments = '{comments}'
-                        where audio_id = '{audio}'
+                        where exists(
+                                select 1 
+                                from audio_uploads au 
+                                where au.audio_id = aps.audio_id
+                                and au.file_code = '{audio}')
                         """
 
         with self.get_connection() as session:
