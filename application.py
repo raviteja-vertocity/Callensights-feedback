@@ -12,6 +12,7 @@ import os
 
 
 STAGE='analysis'
+MAX_MESSAGES = 10
 # Create logger
 logger = logging.getLogger("feedback")
 logger.setLevel(logging.INFO)
@@ -39,10 +40,15 @@ Provide Feedback: Offer detailed, actionable feedback to sales representatives, 
 Rate Sales Efforts: Implement a 10-point rating system to evaluate sales efforts based on predefined criteria, including communication skills, product knowledge, negotiation techniques, etc.
 Develop Improvement Strategies: Collaborate with the sales team to create and implement strategies that drive continuous improvement in sales performance.
 Create Reports: Prepare and present analytical reports to the management, showcasing the trends, successes, and areas for enhancement in the sales process.
-
-this is a Conversation between Sales Representative and Potential Customer for Vertocity, Give me pros and cons of the pitch and a detailed feedback on what are the areas of improvement., Give me 10 key metrics and their ratings and overall rating.
+this is a Conversation between Sales Representative and Potential Customer for Vertocity,
 """
 
+user_msgs = [
+    {'role': 'user', 'content': "Give me pros of the pitch"}, 
+    {'role': 'user', 'content': "Give me cons of the pitch"},
+    {'role': 'user', 'content': "Give me a detailed feedback on what are the areas of improvement."},
+    {'role': 'user', 'content': "Give me 10 key metrics and their ratings and overall rating."}
+]
 
 
 def application(environ, start_response):
@@ -118,17 +124,24 @@ def process_event(event_data):
             transcription = load(trans_file)
 
         openai.api_key = os.environ.get('OPENAI_API_KEY')
-        feedback = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {'role': 'system', 'content': system_content},
-                {'role': 'user', 'content': transcription['text']}
-            ]
-        )
+        messages = [{'role': 'system', 'content': system_content}]
+        
+        user_msgs.insert(0, {'role': 'user', 'content': transcription['text']})
+
+        for msg in user_msgs:
+            print("Asking:", msg.get('content'))
+            messages.append(msg)
+            completion = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=messages[-MAX_MESSAGES:]
+            )
+            messages.append(completion.choices[0].message)
+            print("Response", messages[-1].get('content'))
+            
         
         logger.info(f'Writing feedback into {local_feedback_file}')
         with open(local_feedback_file, 'w') as fbf:
-            fbf.write(json.dumps(feedback, indent=4))
+            fbf.write(json.dumps(messages[1:], indent=4))
             fbf.flush()
         
         logger.info(f"Uploading feedback to {feedback_bucket}/{feedback_file}")
