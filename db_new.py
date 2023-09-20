@@ -2,7 +2,7 @@
 from botocore.exceptions import ClientError
 from mysql.connector import connect
 from mysql.connector import MySQLConnection
-from typing import Optional
+from typing import Optional, Any
 
 import boto3
 import os
@@ -31,9 +31,12 @@ class MysqlDB:
         if stage not in {'transcript', 'analysis'}:
             raise Exception("Invalid stage; stage must be 'transcript' or 'analysis' ")
         
+        field = 'trans' if stage=='transcript' else 'analysis'
+        column = field + ("_start_dt" if status == 'R' else "_end_dt")
+        addition = column + " = NOW(), "
         query_update = f"""
                         UPDATE audio_process_status aps
-                        SET {stage} = '{status}',
+                        SET {addition} {stage} = '{status}',
                             coments = '{comments}'
                         where exists(
                                 select 1 
@@ -41,7 +44,7 @@ class MysqlDB:
                                 where au.audio_id = aps.audio_id
                                 and au.file_code = '{audio}')
                         """
-
+        print("Executing:", query_update)
         with self.get_connection() as session:
             cur = session.cursor()
             cur.execute(query_update)
@@ -56,7 +59,7 @@ class MysqlDB:
                         FROM audio_uploads au
                         JOIN audio_process_status aps 
                             ON au.audio_id=aps.audio_id
-                        WHERE aps.{stage} = 'N'
+                        WHERE aps.{stage} != 'S'
                         AND au.file_code = '{audio_id}';
                         """
         with self.get_connection() as session:
@@ -95,4 +98,54 @@ class MysqlDB:
         # Decrypts secret using the associated KMS key.
         self.secret =  json.loads(get_secret_value_response['SecretString'])
         return self.secret.get(name)
+    
+    def get_sysmsg(self, group:str) -> dict[str, str]:
+        query = f"""
+                SELECT group_description
+                FROM user_groups
+                WHERE group_name = '{group}'
+                """
+        
+        with self.get_connection() as session:
+            cur = session.cursor()
+            print("Executing:", query)
+            cur.execute(query)
+
+            msg, =cur.fetchone()
+            return {'role': 'system', 'content': msg}
+        
+    def get_usrmsgs(self, group:str) -> list[dict[str, str]]:
+        query = f"""
+            SELECT gm.message
+            FROM group_messages gm
+            JOIN user_groups g ON (g.group_id=gm.group_id)
+            WHERE group_name = '{group}'
+            ORDER BY message_sequence
+            """
+        print("Running:", query)
+
+        with self.get_connection() as session:
+            cur = session.cursor()
+            cur.execute(query)
+            msgs = cur.fetchall()
+
+        return [{'role':'user', 'content':msg} for msg, in msgs]
+    
+    def get_user_group(self, user_id:str) -> Any:
+        query = f"""
+            SELECT group_name
+            FROM users u
+            JOIN user_groups ug ON u.group_id = ug.group_id
+            WHERE u.clerk_user_id = '{user_id}'
+            """
+        print("Executing:", query)
+
+        with self.get_connection() as session:
+            cur = session.cursor()
+            cur.execute(query)
+            grp, = cur.fetchone()
+
+        return grp
+
+
 

@@ -31,24 +31,9 @@ handler.setFormatter(formatter)
 # add Handler to Logger
 logger.addHandler(handler)
 
-system_content = """
-The Senior Sales Analyst will be responsible for analyzing sales calls, providing constructive feedback to the sales representatives, identifying areas of improvement, and recommending changes to secure closures. The role involves delivering a critical evaluation of sales efforts through a 10-point rating system, aiming at enhancing the overall sales performance.
 
-Key Responsibilities:
-Analyze Sales Calls: Systematically review and analyze recorded sales calls to identify key trends, strengths, weaknesses, opportunities, and threats.
-Provide Feedback: Offer detailed, actionable feedback to sales representatives, outlining the pros and cons of their approach and suggesting improvements.
-Rate Sales Efforts: Implement a 10-point rating system to evaluate sales efforts based on predefined criteria, including communication skills, product knowledge, negotiation techniques, etc.
-Develop Improvement Strategies: Collaborate with the sales team to create and implement strategies that drive continuous improvement in sales performance.
-Create Reports: Prepare and present analytical reports to the management, showcasing the trends, successes, and areas for enhancement in the sales process.
-this is a Conversation between Sales Representative and Potential Customer for Vertocity,
-"""
+db = MysqlDB()
 
-user_msgs = [
-    {'role': 'user', 'content': "Give me pros of the pitch"}, 
-    {'role': 'user', 'content': "Give me cons of the pitch"},
-    {'role': 'user', 'content': "Give me a detailed feedback on what are the areas of improvement."},
-    {'role': 'user', 'content': "Give me 10 key metrics and their ratings and overall rating."}
-]
 
 
 def application(environ, start_response):
@@ -60,14 +45,13 @@ def application(environ, start_response):
             if path == '/':
                 request_body_size = int(environ['CONTENT_LENGTH'])
                 request_body = environ['wsgi.input'].read(request_body_size)
-                # request_body = b'{"audio_code": "1508202300000014", "audio_bucket": "callensights-audio", "audio_file": "1508202300000014.m4a", "trans_bucket": "callensights-transcript", "trans_file": "1508202300000014.transcript.txt", "analysis_bucket":"callensights-analysis"}'
+                # request_body = b'{"user_id":"user_2VXIPRBarwM7NDv8lmwZeNv7MRC", "audio_code": "0809202300000024", "audio_bucket": "callensights-audio", "audio_file": "0809202300000024.m4a", "trans_bucket": "callensights-transcript", "trans_file": "0809202300000024.transcript.txt", "analysis_bucket":"callensights-analysis"}'
                 logger.info("Received message: %s" % request_body)
             elif path == '/scheduled':
                 logger.info("Received task %s scheduled at %s", environ['HTTP_X_AWS_SQSD_TASKNAME'],
                             environ['HTTP_X_AWS_SQSD_SCHEDULED_AT'])
                 
             request = loads(request_body)
-            db = MysqlDB()
             audio_code = request['audio_code']
                 
             if db.is_completed(audio_code, STAGE):
@@ -105,6 +89,7 @@ def application(environ, start_response):
 def process_event(event_data):
     # Replace this function with your actual event processing logic
     logger.info(f"Processing event: {event_data}")
+    user_id = event_data.get('user_id')
     trans_file = event_data.get('trans_file')
     trans_bucket = event_data.get('trans_bucket')
     feedback_bucket = event_data.get('analysis_bucket')
@@ -124,7 +109,9 @@ def process_event(event_data):
             transcription = load(trans_file)
 
         openai.api_key = os.environ.get('OPENAI_API_KEY')
-        messages = [{'role': 'system', 'content': system_content}]
+        user_group = db.get_user_group(user_id)
+        messages = [db.get_sysmsg(user_group)]
+        user_msgs = db.get_usrmsgs(user_group)
         
         user_msgs.insert(0, {'role': 'user', 'content': transcription['text']})
 
@@ -201,4 +188,4 @@ if __name__ == '__main__':
         'SCRIPT_NAME': ''
     }
 
-    # application(input_env, lambda *args, **kwargs: print(*args, **kwargs))
+    application(input_env, lambda *args, **kwargs: print(*args, **kwargs))
