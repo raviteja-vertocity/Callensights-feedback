@@ -73,7 +73,7 @@ class MysqlDB:
     def get_secret(self, name:str) -> str:
         
         if name in self.secret:
-                print(name, self.secret.get(name))
+                print(name, self.secret.get(name) if name != 'password' else 'XXXXXX')
                 return self.secret.get(name)
 
         secret_name = os.environ.get('MYSQL_SECRET', "dev/callensights/mysql2") #"dev/callensights/mysql2"
