@@ -138,7 +138,7 @@ class MysqlDB:
             JOIN user_groups ug ON u.group_id = ug.group_id
             WHERE u.clerk_user_id = '{user_id}'
             """
-        print("Executing:", query)
+        print("Getting Group:", query)
 
         with self.get_connection() as session:
             cur = session.cursor()
