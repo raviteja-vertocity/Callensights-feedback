@@ -143,6 +143,10 @@ class MysqlDB:
         with self.get_connection() as session:
             cur = session.cursor()
             cur.execute(query)
+            r = cur.fetchone()
+
+            if not r:
+                raise Exception(f"User {user_id}, not assiciated to any Group.")
             grp, = cur.fetchone()
 
         return grp

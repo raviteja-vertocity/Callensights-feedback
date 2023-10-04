@@ -45,7 +45,7 @@ def application(environ, start_response):
             if path == '/':
                 request_body_size = int(environ['CONTENT_LENGTH'])
                 request_body = environ['wsgi.input'].read(request_body_size)
-                # request_body = b'{"user_id":"user_2VXIPRBarwM7NDv8lmwZeNv7MRC", "audio_code": "0809202300000024", "audio_bucket": "callensights-audio", "audio_file": "0809202300000024.m4a", "trans_bucket": "callensights-transcript", "trans_file": "0809202300000024.transcript.txt", "analysis_bucket":"callensights-analysis"}'
+                # request_body = b'{"audio_code": "0410202300000269", "audio_file": "0410202300000269.mp3", "audio_bucket": "callensights-audio", "trans_bucket": "callensights-transcript", "analysis_bucket": "callensights-analysis", "user_id": "user_2WICvHmUP4iJ8ubmkC4bTbWTZHi", "trans_file": "0410202300000269.transcript.txt"}'
                 logger.info("Received message: %s" % request_body)
             elif path == '/scheduled':
                 logger.info("Received task %s scheduled at %s", environ['HTTP_X_AWS_SQSD_TASKNAME'],
@@ -188,4 +188,4 @@ if __name__ == '__main__':
         'SCRIPT_NAME': ''
     }
 
-    application(input_env, lambda *args, **kwargs: print(*args, **kwargs))
+    # application(input_env, lambda *args, **kwargs: print(*args, **kwargs))
