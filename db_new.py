@@ -147,7 +147,7 @@ class MysqlDB:
 
             if not r:
                 raise Exception(f"User {user_id}, not assiciated to any Group.")
-            grp, = cur.fetchone()
+            grp, = r
 
         return grp
 
