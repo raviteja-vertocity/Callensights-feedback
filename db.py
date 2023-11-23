@@ -27,47 +27,48 @@ class MysqlDB:
     def update_audio_process_status(
         self, audio, stage, status="R", comments="Started processing.."
     ):
-        """
-        stage = transcript or analysis
-        """
         if stage not in {"transcript", "analysis"}:
             raise Exception("Invalid stage; stage must be 'transcript' or 'analysis' ")
 
         field = "trans" if stage == "transcript" else "analysis"
         column = field + ("_start_dt" if status == "R" else "_end_dt")
         addition = column + " = NOW(), "
-        query_update = f"""
+        query_update = """
                         UPDATE audio_process_status aps
-                        SET {addition} {stage} = '{status}',
-                            coments = '{comments}'
-                        where exists(
-                                select 1 
-                                from audio_uploads au 
-                                where au.audio_id = aps.audio_id
-                                and au.file_code = '{audio}')
-                        """
+                        SET {addition} {stage} = %s,
+                            coments = %s
+                        WHERE EXISTS(
+                                SELECT 1 
+                                FROM audio_uploads au 
+                                WHERE au.audio_id = aps.audio_id
+                                AND au.file_code = %s)
+                        """.format(
+            addition=addition, stage=stage
+        )
         print("Executing:", query_update)
         with self.get_connection() as session:
             cur = session.cursor()
-            cur.execute(query_update)
+            cur.execute(query_update, (status, comments, audio))
             session.commit()
 
     def is_completed(self, audio_id, stage):
         if stage not in {"transcript", "analysis"}:
             raise Exception("Invalid stage; stage must be 'transcript' or 'analysis' ")
 
-        query_new_audio = f"""
-                        SELECT count(*) as cnt
+        query_new_audio = """
+                        SELECT COUNT(*) as cnt
                         FROM audio_uploads au
                         JOIN audio_process_status aps 
-                            ON au.audio_id=aps.audio_id
+                            ON au.audio_id = aps.audio_id
                         WHERE aps.{stage} != 'S'
-                        AND au.file_code = '{audio_id}';
-                        """
+                        AND au.file_code = %s;
+                        """.format(
+            stage=stage
+        )
         with self.get_connection() as session:
             cur = session.cursor()
             print("Executing", query_new_audio)
-            cur.execute(query_new_audio)
+            cur.execute(query_new_audio, (audio_id,))
             (count,) = cur.fetchone()
 
         return count == 0
