@@ -8,9 +8,9 @@ MAX_MESSAGES = 10
 LOG_FILE = "/tmp/transcription-app.log"
 
 
-class TranscriptionProcessor:
+class Processor:
     """
-    The Transcription Processor module is designed to process events related to transcription tasks. It interfaces with MongoDB for data storage and retrieval and utilizes the OpenAI GPT-3.5 Turbo model for generating feedback on transcriptions.
+    The Processor module is designed to process events related to transcription tasks. It interfaces with MongoDB for data storage and retrieval and utilizes the OpenAI GPT-3.5 Turbo model for generating feedback on transcriptions.
 
     Prerequisites:
         - Python Version: The module is designed to work with Python 3.
