@@ -4,7 +4,7 @@ from db import MysqlDB
 
 import logging.handlers
 
-from process_event import TranscriptionProcessor
+from transcription_processor import TranscriptionProcessor
 
 
 STAGE = "analysis"
