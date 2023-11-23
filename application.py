@@ -4,7 +4,7 @@ from db import MysqlDB
 
 import logging.handlers
 
-from process_event import process_event
+from process_event import TranscriptionProcessor
 
 
 STAGE = "analysis"
@@ -61,7 +61,8 @@ def application(environ, start_response):
 
             db.update_audio_process_status(media_code, STAGE)
             try:
-                process_event(request)
+                transcription_processor = TranscriptionProcessor()
+                transcription_processor.process(request)
                 db.update_audio_process_status(
                     media_code,
                     STAGE,
