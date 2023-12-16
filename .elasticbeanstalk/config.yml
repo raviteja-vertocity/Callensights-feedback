@@ -1,14 +1,14 @@
 branch-defaults:
   default:
-    environment: Cns-dev-feedbk-wkr-app-env
+    environment: Cns-dev-feedback-wkr-app-env
   main:
-    environment: Cns-dev-feedbk-wkr-app-env
+    environment: Cns-dev-feedback-wkr-app-env
 environment-defaults:
-  Cns-dev-feedbk-wkr-app-env:
+  Cns-dev-feedback-wkr-app-env:
     branch: null
     repository: null
 global:
-  application_name: cns-dev-feedbk-wkr-app
+  application_name: cns-dev-feedback-wkr-app
   default_ec2_keyname: aws-eb
   default_platform: Python 3.11 running on 64bit Amazon Linux 2023
   default_region: us-east-1

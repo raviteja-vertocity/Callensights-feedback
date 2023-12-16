@@ -89,7 +89,7 @@ class Processor:
 
             transcription = mdb.get_transcription(media_code=media_code)
 
-            openai.api_key = os.environ.get("OPENAI_API_KEY", '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')
+            openai.api_key = os.environ.get("OPENAI_API_KEY")
             messages = []
             messages += db.get_system_message(user_id)
             messages.append({"role": "user", "content": transcription["text"]})
