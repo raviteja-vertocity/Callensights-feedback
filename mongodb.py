@@ -24,19 +24,20 @@ class MongoDB:
         """
         Get MongoDB connection using the provided credentials.
         """
-        if not self.client:
+        if True:
             mongo_url = f"mongodb+srv://{self.get_secret('username')}:{self.get_secret('password')}@{self.get_secret('host')}/?retryWrites=true&w=majority"
             self.client = MongoClient(mongo_url)
         return self.client
 
-    def put_feedback(self, feedback, collection_name="feedbacks") -> str:
+    def put_feedback(self, feedback, collection_name="feedbacks") :
         """
         Insert feedback data into MongoDB.
         """
         with self.get_connection() as client:
             db = client[self.database]
             collection = db[collection_name]
-            return collection.insert_one(feedback)
+            response = collection.insert_one(feedback)
+        return response
 
     def get_transcription(self, media_code, collection_name="transcriptions") -> str:
         """

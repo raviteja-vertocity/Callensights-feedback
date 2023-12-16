@@ -3,6 +3,7 @@ from mongodb import MongoDB
 import openai
 import os
 import logging.handlers
+from db import MysqlDB
 
 MAX_MESSAGES = 10
 LOG_FILE = "/tmp/transcription-app.log"
@@ -61,7 +62,7 @@ class Processor:
 
         return logger
 
-    def process(self, event_data):
+    def process(self, event_data, logger):
         """
         Process an event related to transcription.
 
@@ -70,44 +71,51 @@ class Processor:
 
         Returns:
             None
+            :param event_data:
+            :param logger:
         """
-        db = MongoDB()
+        mdb = MongoDB()
+        db = MysqlDB(logger)
+
         try:
             self.logger.info(f"Processing event: {event_data}")
 
-            user_id = event_data.get("user_id")
             media_code = event_data.get("media_code")
+            user_id = db.get_user_id(media_code)
 
             self.logger.info(
                 f"Generating feedback for transcript media code: {media_code}"
             )
 
-            transcription = db.get_transcription(media_code=media_code)
+            transcription = mdb.get_transcription(media_code=media_code)
 
-            openai.api_key = os.environ.get("OPENAI_API_KEY")
-            user_group = db.get_user_group(user_id)
-            messages = [db.get_sysmsg(user_group)]
-            user_msgs = db.get_usrmsgs(user_group)
+            openai.api_key = os.environ.get("OPENAI_API_KEY", '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')
+            messages = []
+            messages += db.get_system_message(user_id)
+            messages.append({"role": "user", "content": transcription["text"]})
 
-            user_msgs.insert(0, {"role": "user", "content": transcription["text"]})
+            questions = []
+            questions += db.get_user_message()
+            questions += db.get_metric_prompts(media_code)
 
-            for msg in user_msgs:
-                print("Asking:", msg.get("content"))
-                messages.append(msg)
+            for question in questions:
+                print("Asking:", question.get("content"))
+                messages.append(question)
                 completion = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo", messages=messages[-self.MAX_MESSAGES :]
+                    model="gpt-3.5-turbo", messages=messages[-self.MAX_MESSAGES:]
                 )
                 messages.append(completion.choices[0].message)
                 print("Response", messages[-1].get("content"))
 
-            # TODO: Store feedback in MongoDB
-            feedback = dumps(messages[1:], indent=4)
-            updated_feedback = {"media_code": media_code, **feedback}
+            updated_feedback = {"media_code": media_code, "feedback": messages[1:]}
+            logger.info('writing into MongoDB')
+            mdb.put_feedback(updated_feedback)
             # ? WARN: Don't store unless you're sure that the data is completely structured
             # db.put_feedback(feedback=updated_feedback)
 
         except Exception as e:
             self.handle_error(f"An unexpected error occurred: {e}")
+            raise
         finally:
             self._cleanup(db)
 

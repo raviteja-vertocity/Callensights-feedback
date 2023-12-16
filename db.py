@@ -1,7 +1,7 @@
 from botocore.exceptions import ClientError
 from mysql.connector import connect
 from mysql.connector import MySQLConnection
-from typing import Optional, Any
+from typing import Optional, List, Any
 
 import boto3
 import os
@@ -12,74 +12,88 @@ class MysqlDB:
     connection: Optional[MySQLConnection] = None
     params: dict = {}
     secret: dict = {}
+    _STAGE_COLUMNS = {
+        'transcript': 'ms_trans_status_cd',
+        'analysis': 'ms_fedbk_status_cd'
+    }
 
-    def __init__(self) -> None:
+    def __init__(self, logger) -> None:
+        self.logger = logger
         self.params = {
-            "user": self.get_secret("username"),  #'cns_owner',
+            "user": self.get_secret("username"),  # 'cns_owner',
             "password": self.get_secret("password"),
             "host": self.get_secret("host"),
-            "database": "callensights",
+            "database": "callensights_dev"  # self.get_secret("dbInstanceIdentifier"),
         }
 
     def get_connection(self) -> MySQLConnection:
         return connect(**self.params)
 
     def update_audio_process_status(
-        self, audio, stage, status="R", comments="Started processing.."
+            self, audio, stage, status="R", comments="Started processing.."
     ):
-        if stage not in {"transcript", "analysis"}:
+        """
+        stage = transcript or analysis
+        """
+        self.logger.info(f"Updating {status=} {stage=}")
+        column = self._STAGE_COLUMNS.get(stage)
+        if not column:
             raise Exception("Invalid stage; stage must be 'transcript' or 'analysis' ")
 
-        field = "trans" if stage == "transcript" else "analysis"
-        column = field + ("_start_dt" if status == "R" else "_end_dt")
-        addition = column + " = NOW(), "
-        query_update = """
-                        UPDATE audio_process_status aps
-                        SET {addition} {stage} = %s,
-                            coments = %s
-                        WHERE EXISTS(
-                                SELECT 1 
-                                FROM audio_uploads au 
-                                WHERE au.audio_id = aps.audio_id
-                                AND au.file_code = %s)
-                        """.format(
-            addition=addition, stage=stage
-        )
-        print("Executing:", query_update)
+        query_update = f"""
+            UPDATE cns_media_status ms
+            SET {column} = %s, 
+                ms_comments = %s
+            WHERE EXISTS (
+                SELECT 1 
+                FROM cns_media_def md 
+                WHERE ms.ms_media_id = md.cm_media_id
+                AND md.cm_media_code = %s
+            )
+        """
+
+        self.logger.info(f"Running query_update: {query_update}")
         with self.get_connection() as session:
             cur = session.cursor()
             cur.execute(query_update, (status, comments, audio))
             session.commit()
 
     def is_completed(self, audio_id, stage):
+        self.logger.info(f"checking is completed or not {audio_id=}, {stage=}")
         if stage not in {"transcript", "analysis"}:
             raise Exception("Invalid stage; stage must be 'transcript' or 'analysis' ")
+        if stage == "transcript":
+            column = "ms_trans_status_cd"
+        else:
+            column = "ms_fedbk_status_cd"
 
-        query_new_audio = """
-                        SELECT COUNT(*) as cnt
-                        FROM audio_uploads au
-                        JOIN audio_process_status aps 
-                            ON au.audio_id = aps.audio_id
-                        WHERE aps.{stage} != 'S'
-                        AND au.file_code = %s;
-                        """.format(
-            stage=stage
-        )
+        query_new_audio = f"""
+            SELECT COUNT(*) as cnt
+            FROM cns_media_def md
+            JOIN cns_media_status ms 
+                ON ms.ms_media_id = md.cm_media_id
+            WHERE ms.{column} NOT IN ('C', 'S')
+            AND md.cm_media_code = %s
+        """
+        self.logger.info(f"{query_new_audio=}")
+
+        self.logger.info(f"Running {query_new_audio} : {audio_id}")
         with self.get_connection() as session:
             cur = session.cursor()
-            print("Executing", query_new_audio)
             cur.execute(query_new_audio, (audio_id,))
             (count,) = cur.fetchone()
+            self.logger.info(f"{count=}")
 
         return count == 0
 
     def get_secret(self, name: str) -> str:
+        self.logger.info("Getting Secret")
         if name in self.secret:
-            print(name, self.secret.get(name) if name != "password" else "XXXXXX")
+            print(name, self.secret.get(name))
             return self.secret.get(name)
 
         secret_name = os.environ.get(
-            "MYSQL_SECRET", "dev/callensights/mysql2"
+            "MYSQL_SECRET", "callensights/mysql"
         )  # "dev/callensights/mysql2"
         region_name = os.environ.get("AWS_REGION", "us-east-1")  # "us-east-1"
 
@@ -98,54 +112,79 @@ class MysqlDB:
         self.secret = json.loads(get_secret_value_response["SecretString"])
         return self.secret.get(name)
 
-    def get_sysmsg(self, group: str) -> dict[str, str]:
-        query = f"""
-                SELECT group_description
-                FROM user_groups
-                WHERE group_name = '{group}'
-                """
+    def get_user_id(self, media_code: str) -> int:
+        with self.get_connection() as session:
+            query = f"select cm_user_id  from cns_media_def cmd where cm_media_code ='{media_code}'"
+            with session.cursor() as cursor:
+                cursor.execute(query)
+                (user_id,) = cursor.fetchone()
+
+        return user_id
+
+    def get_system_message(self, user_id: int) -> List[Any]:
 
         with self.get_connection() as session:
-            cur = session.cursor()
-            print("Executing:", query)
-            cur.execute(query)
+            with session.cursor() as cursor:
+                cursor.execute(f"select cu_organization, cu_role  from cns_user_def where cu_user_id = {user_id} ")
+                (organization, role) = cursor.fetchone()
 
-            (msg,) = cur.fetchone()
-            return {"role": "system", "content": msg}
+        context = [
+            f"""This is a call transcription between a representative and a prospect customer. the representative is 
+            working for {organization} and his role is {role} The resp will speak to multiple customers on a daily 
+            basis to sell services of the organization. during the call the rep will try to explain the services of 
+            the organization to the customers and resolve any queries that they have. and will try to provide the 
+            best buying experience for the customer.""",
+            """Your role will be a Sales analyst / call analyst with 10 years of experience in analyzing calls made 
+            by sales rep to customers and help to provide best insights and suggestion for the representatives to 
+            improve their sales process"""]
 
-    def get_usrmsgs(self, group: str) -> list[dict[str, str]]:
-        query = f"""
-            SELECT gm.message
-            FROM group_messages gm
-            JOIN user_groups g ON (g.group_id=gm.group_id)
-            WHERE group_name = '{group}'
-            ORDER BY message_sequence
-            """
-        print("Running:", query)
+        return [{'role': "system", 'content': msg} for msg in context]
 
+    def get_user_message(self) -> List[Any]:
+        msgs = [
+            {
+                'role': "user",
+                'content': "Generate feedback for the representative"
+            },
+            {
+                'role': "user",
+                'content': "Generate Procs for representative in 10 points",
+            },
+            {
+                'role': "user",
+                'content': "Generate Cons for representative in 10 points"
+            }
+        ]
+
+        return msgs
+
+    def get_metric_prompts(self, mcode) -> List[Any]:
+        query = f"select stage_desc, metric_prompt from metrics_view mv where media_Code='{mcode}' "
+        print(query)
+        metrics = [{
+            'role': 'user',
+            'content': 'Provide rating for following metrics based out of 10 and give only number "rating/out of" format'
+        }]
         with self.get_connection() as session:
-            cur = session.cursor()
-            cur.execute(query)
-            msgs = cur.fetchall()
+            with session.cursor() as cursor:
+                cursor.execute(query)
+                for (stage_desc,prompt) in cursor.fetchall():
+                    metrics.append({
+                        'role': 'user',
+                        'content': prompt
+                    })
 
-        return [{"role": "user", "content": msg} for msg, in msgs]
+        return metrics
 
-    def get_user_group(self, user_id: str) -> Any:
-        query = f"""
-            SELECT group_name
-            FROM users u
-            JOIN user_groups ug ON u.group_id = ug.group_id
-            WHERE u.clerk_user_id = '{user_id}'
-            """
-        print("Getting Group:", query)
 
-        with self.get_connection() as session:
-            cur = session.cursor()
-            cur.execute(query)
-            r = cur.fetchone()
 
-            if not r:
-                raise Exception(f"User {user_id}, not assiciated to any Group.")
-            (grp,) = r
 
-        return grp
+if __name__ == "__main__":
+    from logging import getLogger
+
+    db = MysqlDB(getLogger("testing"))
+    media_code = 'a434b6db-7ea8-4286-94fa-3965ab714785'
+    stage = "analysis"
+    db.update_audio_process_status(media_code, stage)
+    db.update_audio_process_status(media_code, stage, status='R', comments="running")
+    db.update_audio_process_status(media_code, stage, status='E', comments="Error")

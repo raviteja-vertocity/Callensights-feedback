@@ -1,4 +1,5 @@
 from json import loads
+from traceback import print_exc
 
 from db import MysqlDB
 
@@ -31,7 +32,7 @@ handler.setFormatter(formatter)
 # add Handler to Logger
 logger.addHandler(handler)
 
-db = MysqlDB()
+db = MysqlDB(logger)
 
 
 def application(environ, start_response):
@@ -43,7 +44,7 @@ def application(environ, start_response):
             if path == "/":
                 request_body_size = int(environ["CONTENT_LENGTH"])
                 request_body = environ["wsgi.input"].read(request_body_size)
-                # request_body = b'{"media_code": "0410202300000269", "audio_file": "0410202300000269.mp3", "audio_bucket": "callensights-audio", "trans_bucket": "callensights-transcript", "analysis_bucket": "callensights-analysis", "user_id": "user_2WICvHmUP4iJ8ubmkC4bTbWTZHi", "trans_file": "0410202300000269.transcript.txt"}'
+                # request_body = b'{"bucket": "callensights-media", "media_code": "42c227c0-18df-4b58-a7bf-774f01b41051", "media_file": "42c227c0-18df-4b58-a7bf-774f01b41051.mp3", "media_size": 5835209}'
                 logger.info("Received message: %s" % request_body)
             elif path == "/scheduled":
                 logger.info(
@@ -62,7 +63,7 @@ def application(environ, start_response):
             db.update_audio_process_status(media_code, STAGE)
             try:
                 processor = Processor()
-                processor.process(request)
+                processor.process(request, logger)
 
                 db.update_audio_process_status(
                     media_code,
@@ -75,6 +76,7 @@ def application(environ, start_response):
                 db.update_audio_process_status(
                     media_code, STAGE, status="E", comments=str(e)
                 )
+                print_exc()
 
         except (TypeError, ValueError):
             logger.warning("Error retrieving request body for async work.")
