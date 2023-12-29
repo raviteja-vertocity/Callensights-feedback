@@ -150,7 +150,7 @@ class MysqlDB:
                 }
             },
             {
-                'type':"cons",
+                'type':"pros",
                 'message': {
                     'role': "user",
                     'content': "Generate Procs for representative in 10 points",
