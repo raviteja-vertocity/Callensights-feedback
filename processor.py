@@ -90,29 +90,66 @@ class Processor:
             transcription = mdb.get_transcription(media_code=media_code)
 
             openai.api_key = os.environ.get("OPENAI_API_KEY")
+            feedback = {}
+            record = {'media_code': media_code, 'feedback':feedback}
             messages = []
             messages += db.get_system_message(user_id)
             messages.append({"role": "user", "content": transcription["text"]})
+            completion = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo", messages=messages[-self.MAX_MESSAGES:]
+                )
 
-            questions = []
-            questions += db.get_user_message()
-            questions += db.get_metric_prompts(media_code)
 
-            for question in questions:
-                print("Asking:", question.get("content"))
-                messages.append(question)
+            # questions += db.get_metric_prompts(media_code)
+
+            for question in db.get_user_message():
+                type = question.get('type')
+                print("Asking:", question.get("message"))
+                messages.append(question.get('message'))
+                completion = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo", messages=messages[-self.MAX_MESSAGES:]
+                )
+                m=completion.choices[0].message
+                messages.append(m)
+                feedback[type] = m['content'].split('\n')
+                print("Response", messages[-1].get("content"))
+            else:
+                messages.append(
+                    {
+                        'role': 'user',
+                        'content': 'Provide rating for following metrics based out of 10 and give only number "rating/out of" format'
+                    }
+                )
                 completion = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo", messages=messages[-self.MAX_MESSAGES:]
                 )
                 messages.append(completion.choices[0].message)
-                print("Response", messages[-1].get("content"))
 
-            updated_feedback = {"media_code": media_code, "feedback": messages[1:]}
+            metrics = []
+            feedback['metrics'] = metrics
+            for question in db.get_metric_prompts(media_code):
+                messages.append(question)
+                completion = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo", messages=messages[-self.MAX_MESSAGES:]
+                )
+                msg = completion.choices[0].message
+                messages.append(msg)
+                metrics.append(
+                    {
+                        'metric_name': question.get('content'),
+                        'rating': msg.get('content').split('/')[0],
+                        "absolute_rating": msg.get('content')
+                    }
+                )
+
+            # updated_feedback = {"media_code": media_code, "feedback": messages[1:]}
             logger.info('writing into MongoDB')
-            mdb.put_feedback(updated_feedback)
+            print("Final response".center(100, "*"))
+            print(dumps(record))
+            mdb.put_feedback(record)
             # ? WARN: Don't store unless you're sure that the data is completely structured
             # db.put_feedback(feedback=updated_feedback)
-
+                             
         except Exception as e:
             self.handle_error(f"An unexpected error occurred: {e}")
             raise

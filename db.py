@@ -143,16 +143,25 @@ class MysqlDB:
     def get_user_message(self) -> List[Any]:
         msgs = [
             {
-                'role': "user",
-                'content': "Generate feedback for the representative"
+                'type':"overall_feedback",
+                'message': {
+                    'role': "user",
+                    'content': "Generate feedback for the representative"
+                }
             },
             {
-                'role': "user",
-                'content': "Generate Procs for representative in 10 points",
+                'type':"cons",
+                'message': {
+                    'role': "user",
+                    'content': "Generate Procs for representative in 10 points",
+                }
             },
             {
-                'role': "user",
-                'content': "Generate Cons for representative in 10 points"
+                'type': "cons",
+                'message' : {
+                    'role': "user",
+                    'content': "Generate Cons for representative in 10 points"
+                }
             }
         ]
 
@@ -161,10 +170,7 @@ class MysqlDB:
     def get_metric_prompts(self, mcode) -> List[Any]:
         query = f"select stage_desc, metric_prompt from metrics_view mv where media_Code='{mcode}' "
         print(query)
-        metrics = [{
-            'role': 'user',
-            'content': 'Provide rating for following metrics based out of 10 and give only number "rating/out of" format'
-        }]
+        metrics = []
         with self.get_connection() as session:
             with session.cursor() as cursor:
                 cursor.execute(query)
