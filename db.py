@@ -131,7 +131,7 @@ class MysqlDB:
         context = [
             f"""This is a call transcription between a representative and a prospect customer. the representative is 
             working for {organization} and his role is {role} The resp will speak to multiple customers on a daily 
-            basis to sell services of the organization. during the call the rep will try to explain the services of 
+            basis to sell services of the organization.""", """During the call the rep will try to explain the services of 
             the organization to the customers and resolve any queries that they have. and will try to provide the 
             best buying experience for the customer.""",
             """Your role will be a Sales analyst / call analyst with 10 years of experience in analyzing calls made 

@@ -117,7 +117,7 @@ class Processor:
                 messages.append(
                     {
                         'role': 'user',
-                        'content': 'Provide rating for following metrics based out of 10 and give only number "rating/out of" format'
+                        'content': 'Provide rating for following metrics based out of 10 and give only number'
                     }
                 )
                 completion = openai.ChatCompletion.create(
@@ -137,8 +137,8 @@ class Processor:
                 metrics.append(
                     {
                         'metric_name': question.get('content'),
-                        'rating': msg.get('content').split('/')[0],
-                        "absolute_rating": msg.get('content')
+                        'rating': msg.get('content'),
+                        "absolute_rating": msg.get('content') + "/10"
                     }
                 )
 
