@@ -129,14 +129,28 @@ class MysqlDB:
                 (organization, role) = cursor.fetchone()
 
         context = [
-            f"""This is a call transcription between a representative and a prospect customer. the representative is 
-            working for {organization} and his role is {role} The resp will speak to multiple customers on a daily 
-            basis to sell services of the organization.""", """During the call the rep will try to explain the services of 
-            the organization to the customers and resolve any queries that they have. and will try to provide the 
-            best buying experience for the customer.""",
-            """Your role will be a Sales analyst / call analyst with 10 years of experience in analyzing calls made 
-            by sales rep to customers and help to provide best insights and suggestion for the representatives to 
-            improve their sales process"""]
+            "This is a call transcription between a recruiter at Techintelliand a prospect Candidate/JobSeeker.Techintelliis a staffing consultancy that provides recruiting and talent acquisition services to organizations looking to hire for various roles across different Non IT industries.",
+            "The recruiter works for Techintelliand has over 5 years of experience in full cycle recruiting. They speak to multiple prospect candidates on a daily basis to understand their needs, and try to close positions given by various clients that the company has.",
+            "During calls with prospects, the recruiter explains the Job Description the company is looking for, Responsibilties, Title, Industry,Salary,Location & Willingness to relocate if required, benefits and commercials, and any other as per the requirement. They aim to resolve any questions or concerns Candidates may have about working with designated client for their role fullfillment.",
+            "The goal is to close positions by providing an excellent Interview and onboarding experience and demonstrating how Techintellican add value as a strategic talent acquisition partner.",
+
+            "Defined Roles:",
+
+            "Recruiter:  ",
+            "Works for  Techintelliwith 5+ years of full life cycle recruiting experience",
+            "Has frequent call interactions with candidates to understand their requirements and expereince.",
+            "Explains {TECHINTELLI}, client benefits, title, requirements, salary, location and any other details.",
+            "Resolves Candidate concerns and questions to secure new client accounts",
+            "Aims to close the position.",
+
+            "BDM (Business Development Manager):",
+            "Works for Techintelliwith 7+ years of recruitment and BDM experience",
+            "Manages and grows relationships with existing candidates",
+            "Close final calls with candidates.",
+            "Negotiates contracts, makes pricing proposals, and closes deals with new candidates.",
+            "Partners with recruiters to ensure successful delivery for client accounts",
+            "Seeks to retain and expand key accounts by providing excellent, strategic recruiting services"
+        ]
 
         return [{'role': "system", 'content': msg} for msg in context]
 
