@@ -7,6 +7,7 @@ from db import MysqlDB
 
 MAX_MESSAGES = 10
 LOG_FILE = "/tmp/transcription-app.log"
+GPT_MODEL = "gpt-4"
 
 
 class Processor:
@@ -96,7 +97,7 @@ class Processor:
             messages += db.get_system_message(user_id)
             messages.append({"role": "user", "content": transcription["text"]})
             completion = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo", messages=messages[-self.MAX_MESSAGES:]
+                    model=GPT_MODEL, messages=messages[-self.MAX_MESSAGES:]
                 )
 
 
@@ -107,7 +108,7 @@ class Processor:
                 print("Asking:", question.get("message"))
                 messages.append(question.get('message'))
                 completion = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo", messages=messages[-self.MAX_MESSAGES:]
+                    model=GPT_MODEL, messages=messages[-self.MAX_MESSAGES:]
                 )
                 m=completion.choices[0].message
                 messages.append(m)
@@ -121,7 +122,7 @@ class Processor:
                     }
                 )
                 completion = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo", messages=messages[-self.MAX_MESSAGES:]
+                    model=GPT_MODEL, messages=messages[-self.MAX_MESSAGES:]
                 )
                 messages.append(completion.choices[0].message)
 
@@ -130,7 +131,7 @@ class Processor:
             for question in db.get_metric_prompts(media_code):
                 messages.append(question)
                 completion = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo", messages=messages[-self.MAX_MESSAGES:]
+                    model=GPT_MODEL, messages=messages[-self.MAX_MESSAGES:]
                 )
                 msg = completion.choices[0].message
                 messages.append(msg)
